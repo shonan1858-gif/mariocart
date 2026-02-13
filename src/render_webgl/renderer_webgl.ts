@@ -7,7 +7,6 @@ import {
   mat4Multiply,
   mat4Perspective,
   mat4RotationY,
-  mat4Scale,
   mat4Translation
 } from './math';
 
@@ -24,6 +23,8 @@ export class WebGLRenderer implements IRenderer {
 
   private readonly trackMesh: GpuMesh;
   private readonly kartMesh: GpuMesh;
+  private readonly groundMesh: GpuMesh;
+  private readonly sceneryMesh: GpuMesh;
   private readonly hud: HTMLDivElement;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -43,6 +44,8 @@ export class WebGLRenderer implements IRenderer {
 
     this.trackMesh = this.uploadMesh(createTrackRibbon(track01));
     this.kartMesh = this.uploadMesh(createCuboid(16, 8, 24));
+    this.groundMesh = this.uploadMesh(createCuboid(1400, 2, 1200));
+    this.sceneryMesh = this.uploadMesh(createCuboid(26, 40, 26));
 
     this.hud = this.createHud();
     this.resize();
@@ -60,47 +63,61 @@ export class WebGLRenderer implements IRenderer {
     gl.useProgram(this.program);
 
     const aspect = this.canvas.width / this.canvas.height;
-    const proj = mat4Perspective(Math.PI / 3.2, aspect, 0.1, 2000);
-
-    const kartHeight = sampleTrackHeight(state.x, state.y) + 4;
-    const kartWorldX = state.x;
-    const kartWorldY = kartHeight;
-    const kartWorldZ = state.y;
-
-    const forwardX = Math.cos(state.heading);
-    const forwardZ = Math.sin(state.heading);
-
-    const camera = [
-      kartWorldX - forwardX * 58,
-      kartWorldY + 32,
-      kartWorldZ - forwardZ * 58
-    ] as const;
-    const target = [
-      kartWorldX + forwardX * 25,
-      kartWorldY + 8,
-      kartWorldZ + forwardZ * 25
-    ] as const;
-
-    const view = mat4LookAt([camera[0], camera[1], camera[2]], [target[0], target[1], target[2]], [0, 1, 0]);
+    const proj = mat4Perspective(Math.PI / 3.2, aspect, 0.1, 2500);
+    const view = mat4LookAt([0, 150, 220], [0, 0, 0], [0, 1, 0]);
     const vp = mat4Multiply(proj, view);
 
-    this.drawMesh(this.trackMesh, vp, mat4Scale(1, 1, 1), [0.16, 0.18, 0.22, 1]);
-
-    const kartModel = mat4Multiply(
-      mat4Translation(kartWorldX, kartWorldY, kartWorldZ),
-      mat4RotationY(-state.heading + Math.PI / 2)
+    const worldTransform = mat4Multiply(
+      mat4RotationY(-state.heading),
+      mat4Translation(-state.x, 0, -state.y)
     );
+
+    this.drawMesh(
+      this.groundMesh,
+      vp,
+      mat4Multiply(worldTransform, mat4Translation(480, -2, 300)),
+      [0.14, 0.45, 0.20, 1]
+    );
+
+    this.drawMesh(this.trackMesh, vp, worldTransform, [0.18, 0.2, 0.25, 1]);
+
+    this.drawScenery(vp, worldTransform);
+
+    const kartHeight = sampleTrackHeight(state.x, state.y) + 4;
+    const kartModel = mat4Translation(0, kartHeight, 0);
     this.drawMesh(this.kartMesh, vp, kartModel, [0.92, 0.28, 0.23, 1]);
 
     this.hud.innerHTML = [
       `Speed: ${Math.abs(state.speed).toFixed(2)}`,
       `<span style="color:${['#94a3b8', '#60a5fa', '#fb923c', '#c084fc'][state.driftStage]}">Drift Stage: ${state.driftStage}</span>`,
       `Charge: ${state.driftCharge.toFixed(2)}`,
+      'Camera: fixed / world-rotating',
       'W/S accel-brake  A/D steer  Shift drift'
     ].join('<br/>');
   }
 
-  private drawMesh(mesh: GpuMesh, vp: Float32Array, model: Float32Array, color: [number, number, number, number]): void {
+  private drawScenery(vp: Float32Array, worldTransform: Float32Array): void {
+    const pillars = [
+      [480, 20, 24],
+      [840, 20, 300],
+      [480, 20, 576],
+      [120, 20, 300],
+      [740, 20, 110],
+      [220, 20, 500]
+    ] as const;
+
+    for (const [x, y, z] of pillars) {
+      const model = mat4Multiply(worldTransform, mat4Translation(x, y, z));
+      this.drawMesh(this.sceneryMesh, vp, model, [0.24, 0.31, 0.39, 1]);
+    }
+  }
+
+  private drawMesh(
+    mesh: GpuMesh,
+    vp: Float32Array,
+    model: Float32Array,
+    color: [number, number, number, number]
+  ): void {
     const gl = this.gl;
     const mvp = mat4Multiply(vp, model);
 
