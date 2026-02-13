@@ -1,4 +1,5 @@
 import { sampleTrackHeight, track01 } from '../data/track01';
+import { kartParams } from '../data/kart_params';
 import type { IRenderer } from '../render/types';
 import type { KartState } from '../sim/kart';
 import { createCuboid, createTrackRibbon, type MeshData } from './mesh';
@@ -25,6 +26,12 @@ export class WebGLRenderer implements IRenderer {
   private readonly trackMesh: GpuMesh;
   private readonly kartMesh: GpuMesh;
   private readonly hud: HTMLDivElement;
+
+  private cameraPos: [number, number, number] | null = null;
+  private cameraTarget: [number, number, number] | null = null;
+  private smoothedFov = Math.PI / 3.2;
+  private lastRenderTimeMs = 0;
+  private boostShakePhase = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl2');
@@ -59,8 +66,9 @@ export class WebGLRenderer implements IRenderer {
 
     gl.useProgram(this.program);
 
-    const aspect = this.canvas.width / this.canvas.height;
-    const proj = mat4Perspective(Math.PI / 3.2, aspect, 0.1, 2000);
+    const now = performance.now();
+    const dt = this.lastRenderTimeMs > 0 ? Math.min(0.05, (now - this.lastRenderTimeMs) / 1000) : 1 / 60;
+    this.lastRenderTimeMs = now;
 
     const kartHeight = sampleTrackHeight(state.x, state.y) + 4;
     const kartWorldX = state.x;
@@ -70,18 +78,55 @@ export class WebGLRenderer implements IRenderer {
     const forwardX = Math.cos(state.heading);
     const forwardZ = Math.sin(state.heading);
 
-    const camera = [
-      kartWorldX - forwardX * 58,
-      kartWorldY + 32,
-      kartWorldZ - forwardZ * 58
-    ] as const;
-    const target = [
-      kartWorldX + forwardX * 25,
-      kartWorldY + 8,
-      kartWorldZ + forwardZ * 25
-    ] as const;
+    const speedRatio = Math.min(1, Math.abs(state.speed) / kartParams.maxSpeed);
+    const chaseDistance = 54 + speedRatio * 20;
+    const chaseHeight = 28 + speedRatio * 6;
+    const lookAhead = 24 + speedRatio * 8;
+    const desiredCamera: [number, number, number] = [
+      kartWorldX - forwardX * chaseDistance,
+      kartWorldY + chaseHeight,
+      kartWorldZ - forwardZ * chaseDistance
+    ];
+    const desiredTarget: [number, number, number] = [
+      kartWorldX + forwardX * lookAhead,
+      kartWorldY + 2,
+      kartWorldZ + forwardZ * lookAhead
+    ];
 
-    const view = mat4LookAt([camera[0], camera[1], camera[2]], [target[0], target[1], target[2]], [0, 1, 0]);
+    if (!this.cameraPos || !this.cameraTarget) {
+      this.cameraPos = [...desiredCamera];
+      this.cameraTarget = [...desiredTarget];
+    }
+
+    const followLerp = 1 - Math.exp(-7.5 * dt);
+    this.cameraPos[0] += (desiredCamera[0] - this.cameraPos[0]) * followLerp;
+    this.cameraPos[1] += (desiredCamera[1] - this.cameraPos[1]) * followLerp;
+    this.cameraPos[2] += (desiredCamera[2] - this.cameraPos[2]) * followLerp;
+    this.cameraTarget[0] += (desiredTarget[0] - this.cameraTarget[0]) * followLerp;
+    this.cameraTarget[1] += (desiredTarget[1] - this.cameraTarget[1]) * followLerp;
+    this.cameraTarget[2] += (desiredTarget[2] - this.cameraTarget[2]) * followLerp;
+
+    const baseFov = Math.PI / 3.3;
+    const boostFov = Math.PI / 2.95;
+    const desiredFov = baseFov + (boostFov - baseFov) * speedRatio;
+    const fovLerp = 1 - Math.exp(-5.5 * dt);
+    this.smoothedFov += (desiredFov - this.smoothedFov) * fovLerp;
+
+    const camera = [...this.cameraPos] as [number, number, number];
+    if (state.turboTimer > 0) {
+      this.boostShakePhase += dt * 55;
+      const shakeStrength = 0.45 + speedRatio * 0.55;
+      camera[0] += Math.sin(this.boostShakePhase * 1.7) * shakeStrength;
+      camera[1] += Math.sin(this.boostShakePhase * 2.8) * shakeStrength * 0.3;
+      camera[2] += Math.cos(this.boostShakePhase * 2.1) * shakeStrength;
+    } else {
+      this.boostShakePhase += dt * 14;
+    }
+
+    const aspect = this.canvas.width / this.canvas.height;
+    const proj = mat4Perspective(this.smoothedFov, aspect, 0.1, 2000);
+
+    const view = mat4LookAt(camera, this.cameraTarget, [0, 1, 0]);
     const vp = mat4Multiply(proj, view);
 
     this.drawMesh(this.trackMesh, vp, mat4Scale(1, 1, 1), [0.16, 0.18, 0.22, 1]);
