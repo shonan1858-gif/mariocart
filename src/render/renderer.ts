@@ -1,7 +1,8 @@
 import { kartParams, trackParams } from '../data/kart_params';
+import type { IRenderer } from './types';
 import type { KartState } from '../sim/kart';
 
-export class Renderer {
+export class Renderer implements IRenderer {
   private readonly ctx: CanvasRenderingContext2D;
 
   constructor(private readonly canvas: HTMLCanvasElement) {

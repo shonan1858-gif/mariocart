@@ -1,5 +1,5 @@
 import { InputController } from '../io/input';
-import { Renderer } from '../render/renderer';
+import type { IRenderer } from '../render/types';
 import { KartSim } from './kart';
 
 const FIXED_DT = 1 / 60;
@@ -8,16 +8,13 @@ const MAX_ACCUM = 0.2;
 export class Game {
   private readonly input = new InputController();
   private readonly kart = new KartSim();
-  private readonly renderer: Renderer;
 
   private running = false;
   private rafId = 0;
   private prevTime = 0;
   private accumulator = 0;
 
-  constructor(private readonly canvas: HTMLCanvasElement) {
-    this.renderer = new Renderer(canvas);
-  }
+  constructor(private readonly renderer: IRenderer) {}
 
   start(): void {
     if (this.running) return;
