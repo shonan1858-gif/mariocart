@@ -9,34 +9,76 @@ export type TrackDefinition = {
   width: number;
 };
 
+export type NearestTrackSample = {
+  x: number;
+  y: number;
+  nx: number;
+  ny: number;
+  tx: number;
+  ty: number;
+  lateral: number;
+};
+
 const SEGMENTS = 96;
 
 const centerLine: TrackPoint[] = Array.from({ length: SEGMENTS }, (_, i) => {
   const t = (i / SEGMENTS) * Math.PI * 2;
   const x = 480 + Math.cos(t) * 300;
   const y = 300 + Math.sin(t) * 175;
-  const z = Math.sin(t * 2.1) * 12 + Math.cos(t * 3.4) * 5;
-  return { x, y, z };
+  return { x, y, z: 0 };
 });
 
 export const track01: TrackDefinition = {
   centerLine,
-  width: 90
+  width: 92
 };
 
-export function sampleTrackHeight(x: number, y: number): number {
-  let best = centerLine[0];
-  let bestDistSq = Number.POSITIVE_INFINITY;
+export function sampleTrackHeight(_x: number, _y: number): number {
+  return 0;
+}
 
-  for (const p of centerLine) {
-    const dx = x - p.x;
-    const dy = y - p.y;
+export function findNearestTrackSample(x: number, y: number): NearestTrackSample {
+  const pts = track01.centerLine;
+  let bestDistSq = Number.POSITIVE_INFINITY;
+  let best: NearestTrackSample = {
+    x: pts[0].x,
+    y: pts[0].y,
+    nx: 1,
+    ny: 0,
+    tx: 0,
+    ty: 1,
+    lateral: 0
+  };
+
+  for (let i = 0; i < pts.length; i += 1) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const sx = b.x - a.x;
+    const sy = b.y - a.y;
+    const segLenSq = sx * sx + sy * sy || 1;
+
+    const apx = x - a.x;
+    const apy = y - a.y;
+    const t = Math.max(0, Math.min(1, (apx * sx + apy * sy) / segLenSq));
+
+    const cx = a.x + sx * t;
+    const cy = a.y + sy * t;
+    const dx = x - cx;
+    const dy = y - cy;
     const distSq = dx * dx + dy * dy;
+
     if (distSq < bestDistSq) {
       bestDistSq = distSq;
-      best = p;
+      const len = Math.hypot(sx, sy) || 1;
+      const tx = sx / len;
+      const ty = sy / len;
+      const nx = -ty;
+      const ny = tx;
+      const lateral = dx * nx + dy * ny;
+
+      best = { x: cx, y: cy, nx, ny, tx, ty, lateral };
     }
   }
 
-  return best.z;
+  return best;
 }

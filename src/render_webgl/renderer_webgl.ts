@@ -1,14 +1,14 @@
 import { sampleTrackHeight, track01 } from '../data/track01';
 import type { IRenderer } from '../render/types';
 import type { KartState } from '../sim/kart';
-import { createCuboid, createTrackRibbon, type MeshData } from './mesh';
 import {
-  mat4LookAt,
-  mat4Multiply,
-  mat4Perspective,
-  mat4RotationY,
-  mat4Translation
-} from './math';
+  createCuboid,
+  createCylinderX,
+  createTrackRibbon,
+  createWallRibbon,
+  type MeshData
+} from './mesh';
+import { mat4LookAt, mat4Multiply, mat4Perspective, mat4RotationY, mat4Translation } from './math';
 
 type GpuMesh = {
   vao: WebGLVertexArrayObject;
@@ -21,11 +21,16 @@ export class WebGLRenderer implements IRenderer {
   private readonly mvpLoc: WebGLUniformLocation;
   private readonly colorLoc: WebGLUniformLocation;
 
-  private readonly trackMesh: GpuMesh;
-  private readonly kartMesh: GpuMesh;
+  private readonly roadMesh: GpuMesh;
+  private readonly shoulderMesh: GpuMesh;
+  private readonly guardMesh: GpuMesh;
   private readonly groundMesh: GpuMesh;
-  private readonly sceneryMesh: GpuMesh;
+  private readonly bodyMesh: GpuMesh;
+  private readonly tireMesh: GpuMesh;
   private readonly hud: HTMLDivElement;
+
+  private camPos: [number, number, number] | null = null;
+  private camTarget: [number, number, number] | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl2');
@@ -35,17 +40,17 @@ export class WebGLRenderer implements IRenderer {
     this.program = this.createProgram();
     const mvpLoc = gl.getUniformLocation(this.program, 'uMvp');
     const colorLoc = gl.getUniformLocation(this.program, 'uColor');
-    if (!mvpLoc || !colorLoc) {
-      throw new Error('Failed to locate shader uniforms');
-    }
+    if (!mvpLoc || !colorLoc) throw new Error('Failed to locate shader uniforms');
 
     this.mvpLoc = mvpLoc;
     this.colorLoc = colorLoc;
 
-    this.trackMesh = this.uploadMesh(createTrackRibbon(track01));
-    this.kartMesh = this.uploadMesh(createCuboid(16, 8, 24));
-    this.groundMesh = this.uploadMesh(createCuboid(1400, 2, 1200));
-    this.sceneryMesh = this.uploadMesh(createCuboid(26, 40, 26));
+    this.roadMesh = this.uploadMesh(createTrackRibbon(track01, track01.width, 0.05));
+    this.shoulderMesh = this.uploadMesh(createTrackRibbon(track01, track01.width + 36, 0.02));
+    this.guardMesh = this.uploadMesh(createWallRibbon(track01, 24, 7));
+    this.groundMesh = this.uploadMesh(createCuboid(1700, 2, 1300));
+    this.bodyMesh = this.uploadMesh(createCuboid(18, 6, 28));
+    this.tireMesh = this.uploadMesh(createCylinderX(5, 3));
 
     this.hud = this.createHud();
     this.resize();
@@ -54,70 +59,76 @@ export class WebGLRenderer implements IRenderer {
 
   render(state: KartState): void {
     const gl = this.gl;
-
     gl.enable(gl.DEPTH_TEST);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.clearColor(0.62, 0.81, 0.98, 1);
+    gl.clearColor(0.56, 0.79, 0.98, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
     gl.useProgram(this.program);
 
+    const kartPos: [number, number, number] = [state.x, sampleTrackHeight(state.x, state.y) + 2, state.y];
+    const forward: [number, number, number] = [Math.cos(state.heading), 0, Math.sin(state.heading)];
+
+    const desiredCam: [number, number, number] = [
+      kartPos[0] - forward[0] * 42,
+      kartPos[1] + 18,
+      kartPos[2] - forward[2] * 42
+    ];
+    const desiredTarget: [number, number, number] = [
+      kartPos[0] + forward[0] * 22,
+      kartPos[1] + 6,
+      kartPos[2] + forward[2] * 22
+    ];
+
+    if (!this.camPos || !this.camTarget) {
+      this.camPos = desiredCam;
+      this.camTarget = desiredTarget;
+    } else {
+      this.camPos = this.lerpVec3(this.camPos, desiredCam, 0.12);
+      this.camTarget = this.lerpVec3(this.camTarget, desiredTarget, 0.2);
+    }
+
     const aspect = this.canvas.width / this.canvas.height;
-    const proj = mat4Perspective(Math.PI / 3.2, aspect, 0.1, 2500);
-    const view = mat4LookAt([0, 150, 220], [0, 0, 0], [0, 1, 0]);
+    const proj = mat4Perspective(Math.PI / 3.5, aspect, 0.1, 2600);
+    const view = mat4LookAt(this.camPos, this.camTarget, [0, 1, 0]);
     const vp = mat4Multiply(proj, view);
 
-    const worldTransform = mat4Multiply(
-      mat4RotationY(-state.heading),
-      mat4Translation(-state.x, 0, -state.y)
+    this.drawMesh(this.groundMesh, vp, mat4Translation(480, -1.4, 300), [0.32, 0.72, 0.24, 1]);
+    this.drawMesh(this.shoulderMesh, vp, mat4Translation(0, 0, 0), [0.55, 0.56, 0.58, 1]);
+    this.drawMesh(this.roadMesh, vp, mat4Translation(0, 0, 0), [0.08, 0.09, 0.10, 1]);
+    this.drawMesh(this.guardMesh, vp, mat4Translation(0, 0, 0), [0.85, 0.87, 0.91, 1]);
+
+    const kartBase = mat4Multiply(
+      mat4Translation(kartPos[0], kartPos[1], kartPos[2]),
+      mat4RotationY(-state.heading + Math.PI / 2)
     );
 
-    this.drawMesh(
-      this.groundMesh,
-      vp,
-      mat4Multiply(worldTransform, mat4Translation(480, -2, 300)),
-      [0.14, 0.45, 0.20, 1]
-    );
+    this.drawMesh(this.bodyMesh, vp, kartBase, [0.15, 0.45, 0.95, 1]);
 
-    this.drawMesh(this.trackMesh, vp, worldTransform, [0.18, 0.2, 0.25, 1]);
-
-    this.drawScenery(vp, worldTransform);
-
-    const kartHeight = sampleTrackHeight(state.x, state.y) + 4;
-    const kartModel = mat4Translation(0, kartHeight, 0);
-    this.drawMesh(this.kartMesh, vp, kartModel, [0.92, 0.28, 0.23, 1]);
+    const wheelOffsets: Array<[number, number, number]> = [
+      [-10, -2, -8],
+      [10, -2, -8],
+      [-10, -2, 8],
+      [10, -2, 8]
+    ];
+    for (const [x, y, z] of wheelOffsets) {
+      const wheelModel = mat4Multiply(kartBase, mat4Translation(x, y, z));
+      this.drawMesh(this.tireMesh, vp, wheelModel, [0.05, 0.05, 0.07, 1]);
+    }
 
     this.hud.innerHTML = [
       `Speed: ${Math.abs(state.speed).toFixed(2)}`,
       `<span style="color:${['#94a3b8', '#60a5fa', '#fb923c', '#c084fc'][state.driftStage]}">Drift Stage: ${state.driftStage}</span>`,
       `Charge: ${state.driftCharge.toFixed(2)}`,
-      'Camera: fixed / world-rotating',
+      'Camera: chase + smooth',
       'W/S accel-brake  A/D steer  Shift drift'
     ].join('<br/>');
   }
 
-  private drawScenery(vp: Float32Array, worldTransform: Float32Array): void {
-    const pillars = [
-      [480, 20, 24],
-      [840, 20, 300],
-      [480, 20, 576],
-      [120, 20, 300],
-      [740, 20, 110],
-      [220, 20, 500]
-    ] as const;
-
-    for (const [x, y, z] of pillars) {
-      const model = mat4Multiply(worldTransform, mat4Translation(x, y, z));
-      this.drawMesh(this.sceneryMesh, vp, model, [0.24, 0.31, 0.39, 1]);
-    }
+  private lerpVec3(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   }
 
-  private drawMesh(
-    mesh: GpuMesh,
-    vp: Float32Array,
-    model: Float32Array,
-    color: [number, number, number, number]
-  ): void {
+  private drawMesh(mesh: GpuMesh, vp: Float32Array, model: Float32Array, color: [number, number, number, number]): void {
     const gl = this.gl;
     const mvp = mat4Multiply(vp, model);
 

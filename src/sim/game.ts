@@ -1,6 +1,7 @@
 import { InputController } from '../io/input';
 import type { IRenderer } from '../render/types';
 import { KartSim } from './kart';
+import { resolveTrackCollision } from './track_collision';
 
 const FIXED_DT = 1 / 60;
 const MAX_ACCUM = 0.2;
@@ -38,6 +39,7 @@ export class Game {
 
     while (this.accumulator >= FIXED_DT) {
       this.kart.update(this.input.getState(), FIXED_DT);
+      resolveTrackCollision(this.kart.state);
       this.accumulator -= FIXED_DT;
     }
 
