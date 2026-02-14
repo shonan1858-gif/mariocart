@@ -5,42 +5,64 @@ export type MeshData = {
   indices: Uint16Array;
 };
 
-export function createTrackRibbon(track: TrackDefinition, width = track.width, y = 0): MeshData {
+function getNormalAt(track: TrackDefinition, i: number): { nx: number; ny: number } {
   const { centerLine } = track;
   const count = centerLine.length;
-  const halfWidth = width * 0.5;
+  const prev = centerLine[(i - 1 + count) % count];
+  const next = centerLine[(i + 1) % count];
+  const tx = next.x - prev.x;
+  const ty = next.y - prev.y;
+  const tLen = Math.hypot(tx, ty) || 1;
+  return { nx: -ty / tLen, ny: tx / tLen };
+}
+
+export function createTrackRibbon(track: TrackDefinition, width = track.width, y = 0): MeshData {
+  return createTrackBand(track, 0, width, y);
+}
+
+export function createTrackBand(
+  track: TrackDefinition,
+  innerWidth: number,
+  outerWidth: number,
+  y = 0
+): MeshData {
+  const { centerLine } = track;
+  const count = centerLine.length;
+  const halfInner = innerWidth * 0.5;
+  const halfOuter = outerWidth * 0.5;
   const verts: number[] = [];
   const indices: number[] = [];
 
   for (let i = 0; i < count; i += 1) {
     const p = centerLine[i];
-    const prev = centerLine[(i - 1 + count) % count];
-    const next = centerLine[(i + 1) % count];
+    const { nx, ny } = getNormalAt(track, i);
 
-    const tx = next.x - prev.x;
-    const ty = next.y - prev.y;
-    const tLen = Math.hypot(tx, ty) || 1;
-    const nx = -ty / tLen;
-    const ny = tx / tLen;
+    const liX = p.x + nx * halfInner;
+    const liY = p.y + ny * halfInner;
+    const loX = p.x + nx * halfOuter;
+    const loY = p.y + ny * halfOuter;
 
-    const lx = p.x + nx * halfWidth;
-    const ly = p.y + ny * halfWidth;
-    const rx = p.x - nx * halfWidth;
-    const ry = p.y - ny * halfWidth;
+    const riX = p.x - nx * halfInner;
+    const riY = p.y - ny * halfInner;
+    const roX = p.x - nx * halfOuter;
+    const roY = p.y - ny * halfOuter;
 
-    verts.push(lx, y, ly);
-    verts.push(rx, y, ry);
+    verts.push(loX, y, loY);
+    verts.push(liX, y, liY);
+    verts.push(riX, y, riY);
+    verts.push(roX, y, roY);
   }
 
   for (let i = 0; i < count; i += 1) {
     const ni = (i + 1) % count;
-    const l0 = i * 2;
-    const r0 = l0 + 1;
-    const l1 = ni * 2;
-    const r1 = l1 + 1;
+    const a = i * 4;
+    const b = ni * 4;
 
-    indices.push(l0, r0, l1);
-    indices.push(r0, r1, l1);
+    indices.push(a + 0, b + 0, a + 1);
+    indices.push(a + 1, b + 0, b + 1);
+
+    indices.push(a + 2, b + 2, a + 3);
+    indices.push(a + 3, b + 2, b + 3);
   }
 
   return {
@@ -55,25 +77,16 @@ export function createWallRibbon(track: TrackDefinition, offset: number, height:
   const verts: number[] = [];
   const indices: number[] = [];
 
-  const sideOffsets = [1, -1] as const;
-
-  for (const side of sideOffsets) {
+  for (const side of [1, -1] as const) {
     const base = verts.length / 3;
 
     for (let i = 0; i < count; i += 1) {
       const p = centerLine[i];
-      const prev = centerLine[(i - 1 + count) % count];
-      const next = centerLine[(i + 1) % count];
-
-      const tx = next.x - prev.x;
-      const ty = next.y - prev.y;
-      const tLen = Math.hypot(tx, ty) || 1;
-      const nx = (-ty / tLen) * side;
-      const ny = (tx / tLen) * side;
+      const { nx, ny } = getNormalAt(track, i);
 
       const edgeDist = width * 0.5 + offset;
-      const x = p.x + nx * edgeDist;
-      const z = p.y + ny * edgeDist;
+      const x = p.x + nx * edgeDist * side;
+      const z = p.y + ny * edgeDist * side;
 
       verts.push(x, 0, z);
       verts.push(x, height, z);

@@ -13,7 +13,9 @@ const canvas = document.createElement('canvas');
 app.appendChild(canvas);
 
 const rendererParam = new URLSearchParams(window.location.search).get('renderer');
-const useWebgl = rendererParam === 'webgl' || rendererParam === '3d' || rendererParam === null;
+const pathIsWebgl = window.location.pathname.includes('renderer=webgl');
+const useWebgl =
+  rendererParam === 'webgl' || rendererParam === '3d' || rendererParam === null || pathIsWebgl;
 const renderer = useWebgl ? new WebGLRenderer(canvas) : new Renderer(canvas);
 
 const game = new Game(renderer);

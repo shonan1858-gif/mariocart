@@ -1,5 +1,6 @@
 import { InputController } from '../io/input';
 import type { IRenderer } from '../render/types';
+import { findNearestTrackSample } from '../data/track01';
 import { KartSim } from './kart';
 import { resolveTrackCollision } from './track_collision';
 
@@ -15,12 +16,16 @@ export class Game {
   private prevTime = 0;
   private accumulator = 0;
 
+  private lap = 0;
+  private prevProgress = 0;
+
   constructor(private readonly renderer: IRenderer) {}
 
   start(): void {
     if (this.running) return;
     this.running = true;
     this.prevTime = performance.now();
+    this.prevProgress = findNearestTrackSample(this.kart.state.x, this.kart.state.y).progress;
     this.rafId = requestAnimationFrame(this.loop);
   }
 
@@ -40,10 +45,22 @@ export class Game {
     while (this.accumulator >= FIXED_DT) {
       this.kart.update(this.input.getState(), FIXED_DT);
       resolveTrackCollision(this.kart.state);
+      this.updateLap();
       this.accumulator -= FIXED_DT;
     }
 
-    this.renderer.render(this.kart.state);
+    this.renderer.render(this.kart.state, { lap: this.lap });
     this.rafId = requestAnimationFrame(this.loop);
   };
+
+  private updateLap(): void {
+    const progress = findNearestTrackSample(this.kart.state.x, this.kart.state.y).progress;
+    const speed = this.kart.state.speed;
+
+    if (this.prevProgress > 0.88 && progress < 0.12 && speed > 0.5) {
+      this.lap = Math.min(1, this.lap + 1);
+    }
+
+    this.prevProgress = progress;
+  }
 }

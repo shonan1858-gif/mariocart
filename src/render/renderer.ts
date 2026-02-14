@@ -1,5 +1,5 @@
 import { kartParams, trackParams } from '../data/kart_params';
-import type { IRenderer } from './types';
+import type { IRenderer, RenderMeta } from './types';
 import type { KartState } from '../sim/kart';
 
 export class Renderer implements IRenderer {
@@ -14,13 +14,13 @@ export class Renderer implements IRenderer {
     this.canvas.height = 600;
   }
 
-  render(state: KartState): void {
+  render(state: KartState, meta: RenderMeta): void {
     const { ctx } = this;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.drawTrack();
     this.drawKart(state);
-    this.drawHud(state);
+    this.drawHud(state, meta);
   }
 
   private drawTrack(): void {
@@ -83,12 +83,12 @@ export class Renderer implements IRenderer {
     ctx.restore();
   }
 
-  private drawHud(state: KartState): void {
+  private drawHud(state: KartState, meta: RenderMeta): void {
     const { ctx } = this;
     const colorByStage = ['#94a3b8', '#60a5fa', '#fb923c', '#c084fc'];
 
     ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
-    ctx.fillRect(16, 16, 240, 116);
+    ctx.fillRect(16, 16, 260, 138);
 
     ctx.fillStyle = '#e2e8f0';
     ctx.font = '16px sans-serif';
@@ -97,6 +97,7 @@ export class Renderer implements IRenderer {
     ctx.fillText(`Drift Stage: ${state.driftStage}`, 28, 70);
     ctx.fillStyle = '#e2e8f0';
     ctx.fillText(`Charge: ${state.driftCharge.toFixed(2)}`, 28, 96);
-    ctx.fillText('W/S accel-brake  A/D steer  Shift drift', 28, 122);
+    ctx.fillText(`Lap: ${meta.lap}/1`, 28, 122);
+    ctx.fillText('W/S accel-brake  A/D steer  Shift drift', 28, 144);
   }
 }
