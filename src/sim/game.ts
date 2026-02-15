@@ -2,7 +2,7 @@ import { InputController } from '../io/input';
 import type { IRenderer } from '../render/types';
 import { findNearestTrackSample } from '../data/track01';
 import { KartSim } from './kart';
-import { resolveTrackCollision } from './track_collision';
+import { getSurfaceAtPosition, resolveTrackCollision } from './track_collision';
 
 const FIXED_DT = 1 / 60;
 const MAX_ACCUM = 0.2;
@@ -43,7 +43,8 @@ export class Game {
     this.accumulator += dt;
 
     while (this.accumulator >= FIXED_DT) {
-      this.kart.update(this.input.getState(), FIXED_DT);
+      const surface = getSurfaceAtPosition(this.kart.state.x, this.kart.state.y);
+      this.kart.update(this.input.getState(), FIXED_DT, surface);
       resolveTrackCollision(this.kart.state);
       this.updateLap();
       this.accumulator -= FIXED_DT;

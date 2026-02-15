@@ -18,10 +18,10 @@ export class InputController {
   getState(): InputState {
     return {
       accel: this.pressed.has('KeyW'),
-      brake: this.pressed.has('KeyS'),
+      brake: this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight'),
       left: this.pressed.has('KeyA'),
       right: this.pressed.has('KeyD'),
-      drift: this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight')
+      drift: this.pressed.has('Space')
     };
   }
 

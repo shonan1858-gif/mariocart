@@ -98,6 +98,6 @@ export class Renderer implements IRenderer {
     ctx.fillStyle = '#e2e8f0';
     ctx.fillText(`Charge: ${state.driftCharge.toFixed(2)}`, 28, 96);
     ctx.fillText(`Lap: ${meta.lap}/1`, 28, 122);
-    ctx.fillText('W/S accel-brake  A/D steer  Shift drift', 28, 144);
+    ctx.fillText('W accel / Shift brake / A,D steer / Space drift', 28, 144);
   }
 }

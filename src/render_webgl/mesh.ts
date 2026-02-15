@@ -79,6 +79,7 @@ export function createWallRibbon(track: TrackDefinition, offset: number, height:
 
   for (const side of [1, -1] as const) {
     const base = verts.length / 3;
+    const guards = side > 0 ? track.guardLeft : track.guardRight;
 
     for (let i = 0; i < count; i += 1) {
       const p = centerLine[i];
@@ -94,6 +95,8 @@ export function createWallRibbon(track: TrackDefinition, offset: number, height:
 
     for (let i = 0; i < count; i += 1) {
       const ni = (i + 1) % count;
+      if (!guards[i] || !guards[ni]) continue;
+
       const b0 = base + i * 2;
       const t0 = b0 + 1;
       const b1 = base + ni * 2;
@@ -166,5 +169,12 @@ export function createCylinderX(length: number, radius: number, segments = 14): 
   return {
     vertices: new Float32Array(verts),
     indices: new Uint16Array(indices)
+  };
+}
+
+export function createSpectatorMeshes(): { body: MeshData; head: MeshData } {
+  return {
+    body: createCuboid(2.4, 4.2, 1.8),
+    head: createCuboid(2.2, 2.2, 2.2)
   };
 }
