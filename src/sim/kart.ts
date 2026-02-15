@@ -15,6 +15,7 @@ export type KartState = {
   jumpVel: number;
   airTime: number;
   isAirborne: boolean;
+  grounded: boolean;
   roll: number;
   pitch: number;
   landingDriftWindow: number;
@@ -41,6 +42,7 @@ export class KartSim {
     jumpVel: 0,
     airTime: 0,
     isAirborne: false,
+    grounded: true,
     roll: 0,
     pitch: 0,
     landingDriftWindow: 0,
@@ -133,6 +135,7 @@ export class KartSim {
       s.jumpHeight = 0;
       s.jumpVel = 0;
       s.isAirborne = false;
+      s.grounded = true;
     }
   }
 
@@ -141,6 +144,7 @@ export class KartSim {
 
     if (!s.isAirborne && input.jumpPressed) {
       s.isAirborne = true;
+      s.grounded = false;
       s.jumpVel = kartParams.jumpVelocity;
       s.airTime = 0;
       s.roll = 0;
@@ -148,23 +152,26 @@ export class KartSim {
     }
 
     if (!s.isAirborne) {
+      s.grounded = true;
       s.roll *= 0.8;
       s.pitch *= 0.8;
       return;
     }
 
     s.airTime += dt;
-    s.jumpVel -= kartParams.jumpGravity * dt;
+    s.jumpVel += kartParams.jumpGravity * dt;
     s.jumpHeight += s.jumpVel * dt;
 
     s.roll += steerInput * 1.8 * dt;
     s.roll = Math.max(-0.75, Math.min(0.75, s.roll));
     s.pitch = Math.max(-0.25, Math.min(0.25, s.jumpVel * 0.03));
 
-    if (s.jumpHeight <= 0) {
-      s.jumpHeight = 0;
+    const groundZ = 0;
+    if (s.jumpHeight <= groundZ) {
+      s.jumpHeight = groundZ;
       s.jumpVel = 0;
       s.isAirborne = false;
+      s.grounded = true;
 
       const slipAngle = Math.abs(s.roll) * (180 / Math.PI);
       if (slipAngle > 20 && Math.abs(s.speed) >= kartParams.minDriftSpeed) {

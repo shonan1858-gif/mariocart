@@ -174,6 +174,8 @@ export class WebGLRenderer implements IRenderer {
       `Charge: ${state.driftCharge.toFixed(2)}`,
       state.turboTimer > 0 ? 'Boosting: ON' : 'Boosting: OFF',
       state.isAirborne ? 'AIR: ON' : 'AIR: OFF',
+      `grounded: ${state.grounded}`,
+      `z: ${state.jumpHeight.toFixed(2)}  vz: ${state.jumpVel.toFixed(2)}`,
       meta.boostText ? `<strong>${meta.boostText}</strong>` : '',
       meta.wallBounce ? '<span style="color:#fca5a5">WallBounce: on</span>' : '',
       'W accel / Shift,S brake / A,D steer / Space jump',

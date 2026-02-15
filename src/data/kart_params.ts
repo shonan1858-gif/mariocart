@@ -8,8 +8,8 @@ export const kartParams = {
   steerRate: 2.4,
   steerAtMinSpeedFactor: 0.35,
 
-  jumpVelocity: 10,
-  jumpGravity: 24,
+  jumpVelocity: 9,
+  jumpGravity: -40,
   airSteerMultiplier: 0.45,
   airControlDrag: 1.15,
 

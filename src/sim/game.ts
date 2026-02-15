@@ -1,6 +1,6 @@
 import { InputController } from '../io/input';
 import type { IRenderer } from '../render/types';
-import { findNearestTrackSample } from '../data/track01';
+import { findNearestTrackSample, track01 } from '../data/track01';
 import { KartSim } from './kart';
 import { getSurfaceAtPosition, resolveTrackCollision } from './track_collision';
 
@@ -24,6 +24,14 @@ export class Game {
   start(): void {
     if (this.running) return;
     this.running = true;
+
+    const spawn = track01.centerLine[0];
+    const spawnNext = track01.centerLine[1];
+    this.kart.state.x = spawn.x;
+    this.kart.state.y = spawn.y;
+    this.kart.state.heading = Math.atan2(spawnNext.y - spawn.y, spawnNext.x - spawn.x);
+    this.kart.state.speed = 0;
+
     this.prevTime = performance.now();
     this.prevProgress = findNearestTrackSample(this.kart.state.x, this.kart.state.y).progress;
     this.rafId = requestAnimationFrame(this.loop);
