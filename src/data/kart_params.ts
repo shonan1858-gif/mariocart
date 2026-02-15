@@ -22,7 +22,7 @@ export const kartParams = {
   turboDurationPerStage: [0, 0.85, 1.35],
   landingDriftWindow: 0.6,
 
-  wallRestitution: 0.24,
+  wallRestitution: 0.3,
   wallFriction: 0.9,
   wallDamping: 0.9,
 

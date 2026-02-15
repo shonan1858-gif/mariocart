@@ -48,17 +48,17 @@ type TrackSegment =
     }
   | { kind: 'close'; step: number; hasGuardrailLeft: boolean; hasGuardrailRight: boolean };
 
-const TRACK_SCALE = 1;
+const TRACK_SCALE = 2.2;
 
 const baseSegments: TrackSegment[] = [
   { kind: 'straight', length: 300, step: 14, hasGuardrailLeft: true, hasGuardrailRight: true },
   { kind: 'curve', radius: 120, angleDeg: 72, dir: 'left', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
-  { kind: 'straight', length: 170, step: 12, hasGuardrailLeft: true, hasGuardrailRight: false },
-  { kind: 's', radius: 85, angleDeg: 55, first: 'right', stepDeg: 4, hasGuardrailLeft: false, hasGuardrailRight: true },
-  { kind: 'straight', length: 180, step: 12, hasGuardrailLeft: false, hasGuardrailRight: false },
+  { kind: 'straight', length: 170, step: 12, hasGuardrailLeft: true, hasGuardrailRight: true },
+  { kind: 's', radius: 85, angleDeg: 55, first: 'right', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
+  { kind: 'straight', length: 180, step: 12, hasGuardrailLeft: true, hasGuardrailRight: true },
   { kind: 'curve', radius: 58, angleDeg: 180, dir: 'left', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
-  { kind: 'straight', length: 260, step: 12, hasGuardrailLeft: true, hasGuardrailRight: false },
-  { kind: 'curve', radius: 100, angleDeg: 88, dir: 'right', stepDeg: 4, hasGuardrailLeft: false, hasGuardrailRight: true },
+  { kind: 'straight', length: 260, step: 12, hasGuardrailLeft: true, hasGuardrailRight: true },
+  { kind: 'curve', radius: 100, angleDeg: 88, dir: 'right', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
   { kind: 'straight', length: 180, step: 12, hasGuardrailLeft: true, hasGuardrailRight: true }
 ];
 
@@ -184,8 +184,8 @@ function generateTrack(): { centerLine: TrackPoint[]; guardLeft: boolean[]; guar
 
   return {
     centerLine: points.map((p) => ({ x: p.x - cx + 480, y: p.y - cy + 300, z: 0 })),
-    guardLeft,
-    guardRight
+    guardLeft: guardLeft.map(() => true),
+    guardRight: guardRight.map(() => true)
   };
 }
 
@@ -193,10 +193,10 @@ const generated = generateTrack();
 
 export const track01: TrackDefinition = {
   centerLine: generated.centerLine,
-  width: 84,
-  shoulderWidth: 20,
-  grassWidth: 220,
-  guardOffset: 7,
+  width: 96,
+  shoulderWidth: 26,
+  grassWidth: 420,
+  guardOffset: 10,
   guardLeft: generated.guardLeft,
   guardRight: generated.guardRight
 };
