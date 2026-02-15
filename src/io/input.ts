@@ -86,6 +86,9 @@ export class InputController {
   }
 
   private onKeyDown = (event: KeyboardEvent): void => {
+    if (event.code === 'Space' || event.code.startsWith('Arrow')) {
+      event.preventDefault();
+    }
     if (event.code === 'Space' && !this.pressed.has('Space')) {
       this.jumpPressedFlag = true;
     }
@@ -94,6 +97,9 @@ export class InputController {
   };
 
   private onKeyUp = (event: KeyboardEvent): void => {
+    if (event.code === 'Space' || event.code.startsWith('Arrow')) {
+      event.preventDefault();
+    }
     this.pressed.delete(event.code);
     if (event.code === 'ShiftLeft' || event.code === 'ShiftRight' || event.code === 'KeyS') {
       this.brakeReleasedFlag = true;

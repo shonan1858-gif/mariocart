@@ -48,19 +48,25 @@ type TrackSegment =
     }
   | { kind: 'close'; step: number; hasGuardrailLeft: boolean; hasGuardrailRight: boolean };
 
-const TRACK_SCALE = 3;
+const TRACK_SCALE = 1;
+
+const baseSegments: TrackSegment[] = [
+  { kind: 'straight', length: 300, step: 14, hasGuardrailLeft: true, hasGuardrailRight: true },
+  { kind: 'curve', radius: 120, angleDeg: 72, dir: 'left', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
+  { kind: 'straight', length: 170, step: 12, hasGuardrailLeft: true, hasGuardrailRight: false },
+  { kind: 's', radius: 85, angleDeg: 55, first: 'right', stepDeg: 4, hasGuardrailLeft: false, hasGuardrailRight: true },
+  { kind: 'straight', length: 180, step: 12, hasGuardrailLeft: false, hasGuardrailRight: false },
+  { kind: 'curve', radius: 58, angleDeg: 180, dir: 'left', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
+  { kind: 'straight', length: 260, step: 12, hasGuardrailLeft: true, hasGuardrailRight: false },
+  { kind: 'curve', radius: 100, angleDeg: 88, dir: 'right', stepDeg: 4, hasGuardrailLeft: false, hasGuardrailRight: true },
+  { kind: 'straight', length: 180, step: 12, hasGuardrailLeft: true, hasGuardrailRight: true }
+];
 
 const segments: TrackSegment[] = [
-  { kind: 'straight', length: 300 * TRACK_SCALE, step: 14 * TRACK_SCALE, hasGuardrailLeft: true, hasGuardrailRight: true },
-  { kind: 'curve', radius: 120 * TRACK_SCALE, angleDeg: 72, dir: 'left', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
-  { kind: 'straight', length: 170 * TRACK_SCALE, step: 12 * TRACK_SCALE, hasGuardrailLeft: true, hasGuardrailRight: false },
-  { kind: 's', radius: 85 * TRACK_SCALE, angleDeg: 55, first: 'right', stepDeg: 4, hasGuardrailLeft: false, hasGuardrailRight: true },
-  { kind: 'straight', length: 180 * TRACK_SCALE, step: 12 * TRACK_SCALE, hasGuardrailLeft: false, hasGuardrailRight: false },
-  { kind: 'curve', radius: 58 * TRACK_SCALE, angleDeg: 180, dir: 'left', stepDeg: 4, hasGuardrailLeft: true, hasGuardrailRight: true },
-  { kind: 'straight', length: 260 * TRACK_SCALE, step: 12 * TRACK_SCALE, hasGuardrailLeft: true, hasGuardrailRight: false },
-  { kind: 'curve', radius: 100 * TRACK_SCALE, angleDeg: 88, dir: 'right', stepDeg: 4, hasGuardrailLeft: false, hasGuardrailRight: true },
-  { kind: 'straight', length: 180 * TRACK_SCALE, step: 12 * TRACK_SCALE, hasGuardrailLeft: true, hasGuardrailRight: true },
-  { kind: 'close', step: 12 * TRACK_SCALE, hasGuardrailLeft: true, hasGuardrailRight: true }
+  ...baseSegments,
+  ...baseSegments,
+  ...baseSegments,
+  { kind: 'close', step: 12, hasGuardrailLeft: true, hasGuardrailRight: true }
 ];
 
 function degToRad(deg: number): number {
@@ -187,10 +193,10 @@ const generated = generateTrack();
 
 export const track01: TrackDefinition = {
   centerLine: generated.centerLine,
-  width: 84 * TRACK_SCALE,
-  shoulderWidth: 20 * TRACK_SCALE,
-  grassWidth: 220 * TRACK_SCALE,
-  guardOffset: 7 * TRACK_SCALE,
+  width: 84,
+  shoulderWidth: 20,
+  grassWidth: 220,
+  guardOffset: 7,
   guardLeft: generated.guardLeft,
   guardRight: generated.guardRight
 };

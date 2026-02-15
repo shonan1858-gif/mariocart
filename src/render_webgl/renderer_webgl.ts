@@ -1,4 +1,4 @@
-import { sampleTrackHeight, track01 } from '../data/track01';
+import { findNearestTrackSample, sampleTrackHeight, track01 } from '../data/track01';
 import type { IRenderer, RenderMeta } from '../render/types';
 import type { KartState } from '../sim/kart';
 import {
@@ -170,12 +170,14 @@ export class WebGLRenderer implements IRenderer {
       `Lap: ${meta.lap}/1`,
       `Speed: ${Math.abs(state.speed).toFixed(2)}`,
       `<span style="color:${['#94a3b8', '#60a5fa', '#fb923c'][state.driftStage]}">Drift Stage: ${state.driftStage}</span>`,
+      `Drift: ${state.driftActive ? 'ON' : 'OFF'}`,
       `Charge: ${state.driftCharge.toFixed(2)}`,
+      state.turboTimer > 0 ? 'Boosting: ON' : 'Boosting: OFF',
       state.isAirborne ? 'AIR: ON' : 'AIR: OFF',
       meta.boostText ? `<strong>${meta.boostText}</strong>` : '',
       meta.wallBounce ? '<span style="color:#fca5a5">WallBounce: on</span>' : '',
       'W accel / Shift,S brake / A,D steer / Space jump',
-      'Landing window + brake + mouse shake => special drift'
+      'Drift: hold Shift + A/D (landing window + mouse shake also works)'
     ].filter(Boolean).join('<br/>');
   }
 
@@ -198,7 +200,8 @@ export class WebGLRenderer implements IRenderer {
 
   private drawSpectators(vp: Float32Array): void {
     const step = 8;
-    const outer = track01.width * 0.5 + track01.shoulderWidth + track01.grassWidth * 0.45;
+    const minSpectatorDist = track01.width * 0.5 + track01.shoulderWidth + track01.guardOffset + 24;
+    const outer = minSpectatorDist + 80;
 
     for (let i = 0; i < track01.centerLine.length; i += step) {
       const p = track01.centerLine[i];
@@ -212,6 +215,10 @@ export class WebGLRenderer implements IRenderer {
       for (const side of [1, -1] as const) {
         const x = p.x + nx * outer * side;
         const z = p.y + ny * outer * side;
+        const nearest = findNearestTrackSample(x, z);
+        if (Math.abs(nearest.lateral) < minSpectatorDist) {
+          continue;
+        }
         const body = mat4Translation(x, 2.4, z);
         const head = mat4Translation(x, 5.5, z);
         const tone: [number, number, number, number] =
