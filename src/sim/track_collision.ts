@@ -24,7 +24,7 @@ export function resolveTrackCollision(state: KartState): void {
   const hasGuard = side > 0 ? track01.guardLeft[nearest.pointIndex] : track01.guardRight[nearest.pointIndex];
 
   if (!hasGuard) {
-    state.speed *= 0.96;
+    state.speed *= 0.97;
     return;
   }
 
@@ -34,28 +34,34 @@ export function resolveTrackCollision(state: KartState): void {
   const vx = Math.cos(state.heading) * state.speed;
   const vy = Math.sin(state.heading) * state.speed;
 
-  const nx = nearest.nx * side;
-  const ny = nearest.ny * side;
+  const outwardNx = nearest.nx * side;
+  const outwardNy = nearest.ny * side;
+  const inwardNx = -outwardNx;
+  const inwardNy = -outwardNy;
 
-  const dot = vx * nx + vy * ny;
-  const rx = vx - (1 + kartParams.wallRestitution) * dot * nx;
-  const ry = vy - (1 + kartParams.wallRestitution) * dot * ny;
+  const dot = vx * inwardNx + vy * inwardNy;
 
-  const tangentX = -ny;
-  const tangentY = nx;
-  const tangential = (rx * tangentX + ry * tangentY) * kartParams.wallFriction;
+  let rx = vx;
+  let ry = vy;
 
-  let outX = tangentX * tangential;
-  let outY = tangentY * tangential;
+  if (dot < 0) {
+    rx = vx - (1 + kartParams.wallRestitution) * dot * inwardNx;
+    ry = vy - (1 + kartParams.wallRestitution) * dot * inwardNy;
+    state.wallBounceTimer = 0.4;
+  }
 
-  outX *= kartParams.wallDamping;
-  outY *= kartParams.wallDamping;
+  const tangentX = -inwardNy;
+  const tangentY = inwardNx;
+  const tangentSpeed = (rx * tangentX + ry * tangentY) * kartParams.wallFriction;
 
-  const nextSpeed = Math.min(kartParams.maxSpeed * 0.7, Math.hypot(outX, outY));
+  rx = tangentX * tangentSpeed * kartParams.wallDamping;
+  ry = tangentY * tangentSpeed * kartParams.wallDamping;
+
+  const nextSpeed = Math.min(kartParams.maxSpeed * 0.75, Math.hypot(rx, ry));
   if (nextSpeed > 0.001) {
-    state.heading = Math.atan2(outY, outX);
+    state.heading = Math.atan2(ry, rx);
     state.speed = nextSpeed;
   } else {
-    state.speed *= 0.4;
+    state.speed *= 0.5;
   }
 }

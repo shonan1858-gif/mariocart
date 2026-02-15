@@ -1,6 +1,6 @@
 export const kartParams = {
   maxSpeed: 16,
-  reverseMaxSpeed: 0,
+  reverseMaxSpeed: -4,
   acceleration: 22,
   braking: 38,
   coastingDrag: 14,
@@ -8,17 +8,23 @@ export const kartParams = {
   steerRate: 2.4,
   steerAtMinSpeedFactor: 0.35,
 
+  jumpVelocity: 10,
+  jumpGravity: 24,
+  airSteerMultiplier: 0.45,
+  airControlDrag: 1.15,
+
   minDriftSpeed: 5.5,
   driftSteerMultiplier: 1.25,
   driftGripFactor: 0.84,
   driftChargeRate: 1,
-  driftStageThresholds: [0, 1.15, 2.6, 4.8],
-  turboPowerPerStage: [0, 18, 26, 34],
-  turboDurationPerStage: [0, 0.7, 1.15, 1.6],
+  driftStageThresholds: [0, 0.8, 1.6],
+  turboPowerPerStage: [0, 20, 30],
+  turboDurationPerStage: [0, 0.85, 1.35],
+  landingDriftWindow: 0.6,
 
-  wallRestitution: 0.2,
-  wallFriction: 0.82,
-  wallDamping: 0.88,
+  wallRestitution: 0.24,
+  wallFriction: 0.9,
+  wallDamping: 0.9,
 
   offroadMaxSpeedMultiplier: 0.55,
   offroadAccelMultiplier: 0.45,

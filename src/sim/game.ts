@@ -50,7 +50,11 @@ export class Game {
       this.accumulator -= FIXED_DT;
     }
 
-    this.renderer.render(this.kart.state, { lap: this.lap });
+    this.renderer.render(this.kart.state, {
+      lap: this.lap,
+      wallBounce: this.kart.state.wallBounceTimer > 0,
+      boostText: this.kart.state.boostTextTimer > 0 ? `BOOST ${this.kart.state.turboStage}` : ''
+    });
     this.rafId = requestAnimationFrame(this.loop);
   };
 

@@ -88,7 +88,7 @@ export class Renderer implements IRenderer {
     const colorByStage = ['#94a3b8', '#60a5fa', '#fb923c', '#c084fc'];
 
     ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
-    ctx.fillRect(16, 16, 260, 138);
+    ctx.fillRect(16, 16, 300, 172);
 
     ctx.fillStyle = '#e2e8f0';
     ctx.font = '16px sans-serif';
@@ -98,6 +98,8 @@ export class Renderer implements IRenderer {
     ctx.fillStyle = '#e2e8f0';
     ctx.fillText(`Charge: ${state.driftCharge.toFixed(2)}`, 28, 96);
     ctx.fillText(`Lap: ${meta.lap}/1`, 28, 122);
-    ctx.fillText('W accel / Shift brake / A,D steer / Space drift', 28, 144);
+    ctx.fillText('W accel / Shift,S brake / A,D steer / Space jump', 28, 144);
+    if (meta.boostText) ctx.fillText(meta.boostText, 28, 164);
+    if (meta.wallBounce) ctx.fillText('WallBounce: on', 170, 164);
   }
 }

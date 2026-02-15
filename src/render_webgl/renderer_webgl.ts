@@ -37,6 +37,7 @@ export class WebGLRenderer implements IRenderer {
   private readonly spectatorBodyMesh: GpuMesh;
   private readonly spectatorHeadMesh: GpuMesh;
   private readonly startLineMesh: GpuMesh;
+  private readonly sparkMesh: GpuMesh;
   private readonly hud: HTMLDivElement;
 
   private readonly startedAt = performance.now();
@@ -73,18 +74,19 @@ export class WebGLRenderer implements IRenderer {
     this.guardMesh = this.uploadMesh(
       createWallRibbon(track01, track01.shoulderWidth + track01.guardOffset, 7)
     );
-    this.groundMesh = this.uploadMesh(createCuboid(2200, 2, 1900));
+    this.groundMesh = this.uploadMesh(createCuboid(7000, 2, 6200));
 
     this.bodyMesh = this.uploadMesh(createCuboid(12, 4.2, 18));
     this.tireMesh = this.uploadMesh(createCylinderX(3.5, 2));
     this.charBodyMesh = this.uploadMesh(createCuboid(3.2, 4.5, 3));
     this.charHeadMesh = this.uploadMesh(createCuboid(3.8, 3.8, 3.8));
+    this.sparkMesh = this.uploadMesh(createCuboid(1.2, 0.7, 2.2));
 
     const spectator = createSpectatorMeshes();
     this.spectatorBodyMesh = this.uploadMesh(spectator.body);
     this.spectatorHeadMesh = this.uploadMesh(spectator.head);
 
-    this.startLineMesh = this.uploadMesh(createCuboid(track01.width - 6, 0.25, 5.5));
+    this.startLineMesh = this.uploadMesh(createCuboid(track01.width - 14, 0.25, 7));
 
     this.hud = this.createHud();
     this.resize();
@@ -102,18 +104,19 @@ export class WebGLRenderer implements IRenderer {
     const tSec = (performance.now() - this.startedAt) * 0.001;
     gl.uniform1f(this.timeLoc, tSec);
 
-    const kartPos: [number, number, number] = [state.x, sampleTrackHeight(state.x, state.y) + 2.1, state.y];
+    const baseY = sampleTrackHeight(state.x, state.y) + 2.1 + state.jumpHeight;
+    const kartPos: [number, number, number] = [state.x, baseY, state.y];
     const forward: [number, number, number] = [Math.cos(state.heading), 0, Math.sin(state.heading)];
 
     const desiredCam: [number, number, number] = [
-      kartPos[0] - forward[0] * 36,
-      kartPos[1] + 14,
-      kartPos[2] - forward[2] * 36
+      kartPos[0] - forward[0] * 108,
+      kartPos[1] + 42,
+      kartPos[2] - forward[2] * 108
     ];
     const desiredTarget: [number, number, number] = [
-      kartPos[0] + forward[0] * 18,
-      kartPos[1] + 4.8,
-      kartPos[2] + forward[2] * 18
+      kartPos[0] + forward[0] * 54,
+      kartPos[1] + 14,
+      kartPos[2] + forward[2] * 54
     ];
 
     if (!this.camPos || !this.camTarget) {
@@ -125,7 +128,7 @@ export class WebGLRenderer implements IRenderer {
     }
 
     const aspect = this.canvas.width / this.canvas.height;
-    const proj = mat4Perspective(Math.PI / 3.5, aspect, 0.1, 3000);
+    const proj = mat4Perspective(Math.PI / 3.5, aspect, 0.1, 9000);
     const view = mat4LookAt(this.camPos, this.camTarget, [0, 1, 0]);
     const vp = mat4Multiply(proj, view);
 
@@ -161,13 +164,36 @@ export class WebGLRenderer implements IRenderer {
     this.drawMesh(this.charBodyMesh, vp, charBodyModel, [0.95, 0.83, 0.22, 1]);
     this.drawMesh(this.charHeadMesh, vp, charHeadModel, [0.98, 0.89, 0.72, 1]);
 
+    this.drawDriftSpark(vp, kartBase, state, tSec);
+
     this.hud.innerHTML = [
       `Lap: ${meta.lap}/1`,
       `Speed: ${Math.abs(state.speed).toFixed(2)}`,
-      `<span style="color:${['#94a3b8', '#60a5fa', '#fb923c', '#c084fc'][state.driftStage]}">Drift Stage: ${state.driftStage}</span>`,
+      `<span style="color:${['#94a3b8', '#60a5fa', '#fb923c'][state.driftStage]}">Drift Stage: ${state.driftStage}</span>`,
       `Charge: ${state.driftCharge.toFixed(2)}`,
-      'W accel / Shift brake / A,D steer / Space drift'
-    ].join('<br/>');
+      state.isAirborne ? 'AIR: ON' : 'AIR: OFF',
+      meta.boostText ? `<strong>${meta.boostText}</strong>` : '',
+      meta.wallBounce ? '<span style="color:#fca5a5">WallBounce: on</span>' : '',
+      'W accel / Shift,S brake / A,D steer / Space jump',
+      'Landing window + brake + mouse shake => special drift'
+    ].filter(Boolean).join('<br/>');
+  }
+
+  private drawDriftSpark(vp: Float32Array, kartBase: Float32Array, state: KartState, tSec: number): void {
+    if (!state.driftActive || state.driftStage === 0) return;
+
+    const color: [number, number, number, number] = state.driftStage === 1
+      ? [0.38, 0.67, 0.98, 1]
+      : [0.99, 0.64, 0.24, 1];
+
+    const flicker = Math.sin(tSec * 35) * 0.6;
+    const z = 7 + flicker;
+
+    const leftSpark = mat4Multiply(kartBase, mat4Translation(-7.5, -1.2, z));
+    const rightSpark = mat4Multiply(kartBase, mat4Translation(7.5, -1.2, z));
+
+    this.drawMesh(this.sparkMesh, vp, leftSpark, color);
+    this.drawMesh(this.sparkMesh, vp, rightSpark, color);
   }
 
   private drawSpectators(vp: Float32Array): void {
